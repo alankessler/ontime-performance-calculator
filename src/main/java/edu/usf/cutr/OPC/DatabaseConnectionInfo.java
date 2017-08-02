@@ -49,6 +49,7 @@ public class DatabaseConnectionInfo {
             BufferedReader br = new BufferedReader(new InputStreamReader(file));
             while((data = br.readLine()) != null)
             {
+                System.err.println("\n Data:" + data);
                 keyValue = data.split(":", 2);
                 keyValue[0] = keyValue[0].trim();
                 keyValue[1] = keyValue[1].trim();

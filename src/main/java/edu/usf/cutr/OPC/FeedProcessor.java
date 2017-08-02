@@ -131,31 +131,31 @@ public class FeedProcessor {
                 String fileName = "/info.txt";
                 DatabaseConnectionInfo dbInfo = new DatabaseConnectionInfo(fileName);
                 String database = dbInfo.getDatabase();
-                Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+                Class.forName("org.postgresql.Driver");
                 Properties properties = new Properties();
                 
-                String URL = "jdbc:sqlserver://" + dbInfo.getServer();
+                String URL = "jdbc:postgresql://" + dbInfo.getServer() + "/" + dbInfo.getDatabase();
                 properties.setProperty("user", dbInfo.getUsername());
                 properties.setProperty("password", dbInfo.getPassword());
                 properties.setProperty("database", dbInfo.getDatabase());
                 Connection conn = null;
                 try {
                     conn = DriverManager.getConnection(URL, properties);
+                    conn.setAutoCommit(false);
                 } catch (SQLException ex) {
                     System.err.println("\nERROR: Database access error. Ensure the details provided in 'info.txt' file are correct.\n");
                     return;
                 }
                 
-                String dbTable = "[" +database + "].[dbo].[vehicle_positions]";
+                String dbTable = "vehicle_positions";
                 System.out.println("\nConnected to Database: " + database);
                 String select;
+		String sql = "SELECT oid, timestamp, trip_id, position_latitude, position_longitude " +
+                                "  FROM vehicle_positions" +
+                                "  WHERE timestamp >= ? AND timestamp <= ?" +
+                                "  ORDER BY oid DESC";
                 if(numRecords > 0)
-                    select = "SELECT TOP("+numRecords+") ";
-                else select = "SELECT ";
-		String sql = select+"[oid], [timestamp], [trip_id], [position_latitude], [position_longitude]\n" +
-                                "  FROM [" +database + "].[dbo].[vehicle_positions]" +
-                                "  WHERE [timestamp] >= ? AND [timestamp] <= ?" +
-                                "  ORDER BY [oid] DESC";
+                    sql = sql + " LIMIT "+numRecords ;
                 
                 PreparedStatement ps = conn.prepareStatement(sql);
                 ps.setTimestamp(1, startTimestamp);
@@ -164,9 +164,9 @@ public class FeedProcessor {
                 System.out.println("\nGTFS Data Valid End Date: " + endTimestamp);
 		ResultSet rs = ps.executeQuery();
                 
-                sql = "UPDATE [" +database + "].[dbo].[vehicle_positions]\n" +
-                        "SET [closest_stop_id] = ?, [distance_to_stop] = ?, [schedule_deviation] = ?, [timepoint] = ? \n" +
-                        "WHERE [oid] = ?";
+                sql = "UPDATE vehicle_positions" +
+                        "SET closest_stop_id = ?, distance_to_stop = ?, schedule_deviation = ?, timepoint = ?" +
+                        "WHERE oid = ?";
                 ps = conn.prepareStatement(sql);
                 long rt_arrivaltime;
                 String timezone = dao.getAllAgencies().iterator().next().getTimezone(); //if there are more than one agencies, they still have same timezone.
